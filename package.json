@@ -7,7 +7,7 @@
 		"test": "jest --verbose --runInBand",
 		"tsc": "tsc",
 		"start": "node build/index.js",
-		"dev": "nodemon index.js",
+		"dev": "ts-node-dev src/index.ts",
 		"lint": "eslint --ext .ts ."
 	},
 	"repository": {
@@ -28,12 +28,14 @@
 	},
 	"devDependencies": {
 		"@types/express": "^4.17.8",
+		"@types/socket.io": "^2.1.11",
 		"@typescript-eslint/eslint-plugin": "^4.1.0",
 		"@typescript-eslint/parser": "^4.1.0",
 		"eslint": "^7.9.0",
 		"jest": "^26.4.2",
 		"nodemon": "^2.0.4",
-		"supertest": "^4.0.2"
+		"supertest": "^4.0.2",
+		"ts-node-dev": "^1.0.0-pre.63"
 	},
 	"jest": {
 		"testEnvironment": "node"
