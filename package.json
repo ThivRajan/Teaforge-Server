@@ -33,7 +33,6 @@
 		"@typescript-eslint/parser": "^4.1.0",
 		"eslint": "^7.9.0",
 		"jest": "^26.4.2",
-		"nodemon": "^2.0.4",
 		"supertest": "^4.0.2",
 		"ts-node-dev": "^1.0.0-pre.63"
 	},
