@@ -19,10 +19,12 @@ let players = [];
 io.of(`/${types_1.Games.Resistance}`).on('connection', (socket) => {
     socket.on('create', (name) => {
         players = players.concat({ id: socket.id, name });
-        socket.emit('roomKey', 'key');
-        socket.join('room', () => {
+        socket.emit('roomKey', 'key'); //generate unique key here
+    });
+    socket.on('joinRoom', (key) => {
+        socket.join(`${key}`, () => {
             const playerNames = players.map(p => p.name);
-            io.to('room').emit('players', playerNames);
+            io.of(`/${types_1.Games.Resistance}`).in(`${key}`).emit('players', playerNames);
         });
     });
 });

@@ -24,9 +24,9 @@ io.of(`/${Games.Resistance}`).on('connection', (socket) => {
 	});
 
 	socket.on('joinRoom', (key: string) => {
-		socket.join(`room/${key}`, () => {
+		socket.join(`${key}`, () => {
 			const playerNames = players.map(p => p.name);
-			io.to(`room/${key}`).emit('players', playerNames);
+			io.of(`/${Games.Resistance}`).in(`${key}`).emit('players', playerNames);
 		});
 	});
 });
