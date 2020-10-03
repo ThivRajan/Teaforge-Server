@@ -20,10 +20,13 @@ let players: Array<Player> = [];
 io.of(`/${Games.Resistance}`).on('connection', (socket) => {
 	socket.on('create', (name: string) => {
 		players = players.concat({ id: socket.id, name });
-		socket.emit('roomKey', 'key');
-		socket.join('room', () => {
+		socket.emit('roomKey', 'key'); //generate unique key here
+	});
+
+	socket.on('joinRoom', (key: string) => {
+		socket.join(`room/${key}`, () => {
 			const playerNames = players.map(p => p.name);
-			io.to('room').emit('players', playerNames);
+			io.to(`room/${key}`).emit('players', playerNames);
 		});
 	});
 });
