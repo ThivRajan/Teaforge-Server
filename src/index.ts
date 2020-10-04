@@ -15,13 +15,17 @@ app.get('/', (_req, res) => {
 	res.send('server is running');
 });
 
-const io = socket(server);
-
 interface Players {
-	[key: string]: { name: string, key: string };
+	[id: string]: { name: string, key: string };
 }
 const players: Players = {};
 
+interface Rooms {
+	[key: string]: string;
+}
+const rooms: Rooms = {};
+
+const io = socket(server);
 //TODO: deal with type error when client leaves room (prob has to do with socket.onclose)
 // i think this error has to do with the server disconnecting & reconnecting
 
@@ -29,7 +33,8 @@ const players: Players = {};
 //TODO: remove player or delete room on disconnect if host  
 //TODO: make max capacity for room
 io.on('connection', (socket) => {
-	socket.on('create', (name: string) => {
+	//TODO: check the game and names are valid
+	socket.on('create', (name: string, game: string) => {
 		let key = generateKey();
 		/* Generate unique key */
 		while (io.sockets.adapter.rooms[key]) {
@@ -37,11 +42,14 @@ io.on('connection', (socket) => {
 		}
 
 		players[socket.id] = { name: name.trim(), key };
+		rooms[key] = game;
+
 		socket.join(`${key}`);
 		socket.emit('roomKey', key);
 		socket.emit('players', [name]);
 	});
 
+	//TODO: check the name is non-empty
 	socket.on('join', (name: string, key: string) => {
 		players[socket.id] = { name, key };
 		if (io.sockets.adapter.rooms[key]) {
@@ -51,7 +59,7 @@ io.on('connection', (socket) => {
 
 			name = name.trim();
 			if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
-				socket.emit('valid');
+				socket.emit('valid', rooms[key]);
 				socket.join(`${key}`);
 				playerNames.push(name);
 				io.of('/').in(`${key}`).emit('players', playerNames);
