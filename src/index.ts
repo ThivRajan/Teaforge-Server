@@ -1,7 +1,7 @@
 import express from 'express';
 import socket from 'socket.io';
 
-import { Games, Player } from './types';
+import { Games } from './types';
 import { generateKey } from './utils';
 
 const app = express();
@@ -16,33 +16,46 @@ app.get('/', (_req, res) => {
 });
 
 const io = socket(server);
-let players: Array<Player> = [];
 
-//TODO: remove room on disconnect
+interface Players {
+	[key: string]: string;
+}
+const players: Players = {};
+
+//TODO: remove room on disconnect if host or just remove player from room
 //TODO: Error handling
 //TODO: check if name is unique in room
 io.of(`/${Games.Resistance}`).on('connection', (socket) => {
 	socket.on('create', (name: string) => {
-		players = players.concat({ id: socket.id, name });
-		//TODO: check key is unique
+		players[socket.id] = name;
 		const key = generateKey();
 		if (io.nsps[`/${Games.Resistance}`].adapter.rooms[key]) {
 			console.log('ERROR');
+			// TODO: throw error or something
 		}
+
+		socket.join(`${key}`);
 		socket.emit('roomKey', key);
 	});
 
 	socket.on('join', (name: string, key: string) => {
-		players = players.concat({ id: socket.id, name });
+		// players = players.concat({ id: socket.id, name });
+		players[socket.id] = name;
+
 		socket.join(`${key}`, () => {
-			const playerNames = players.map(p => p.name);
+			const roomSockets = io.nsps[`/${Games.Resistance}`].adapter.rooms[key].sockets;
+			const playerIds = Object.keys(roomSockets);
+			const playerNames = playerIds.map((id): string => players[id]);
+
 			io.of(`/${Games.Resistance}`).in(`${key}`).emit('players', playerNames);
 		});
 	});
 
-	//TODO: return players by key instead of all players
-	socket.on('getPlayers', () => {
-		const playerNames = players.map(p => p.name);
+	socket.on('getPlayers', (key: string) => {
+		const roomSockets = io.nsps[`/${Games.Resistance}`].adapter.rooms[key].sockets;
+		const playerIds = Object.keys(roomSockets);
+		const playerNames = playerIds.map((id): string => players[id]);
+
 		socket.emit('players', playerNames);
 	});
 });
