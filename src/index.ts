@@ -18,45 +18,62 @@ app.get('/', (_req, res) => {
 const io = socket(server);
 
 interface Players {
-	[key: string]: string;
+	[key: string]: { name: string, key: string };
 }
 const players: Players = {};
 
-//TODO: remove room on disconnect if host or just remove player from room
+//TODO: delete room if 0 players left in room
+//TODO: remove player or delete room on disconnect if host  
+//TODO: make max capacity for room
+
 //TODO: Error handling
-//TODO: check if name is unique in room
+//TODO: check if name is unique in room (part of error handling)
 io.of(`/${Games.Resistance}`).on('connection', (socket) => {
 	socket.on('create', (name: string) => {
-		players[socket.id] = name;
 		const key = generateKey();
 		if (io.nsps[`/${Games.Resistance}`].adapter.rooms[key]) {
 			console.log('ERROR');
 			// TODO: throw error or something
 		}
-
+		players[socket.id] = { name, key };
 		socket.join(`${key}`);
 		socket.emit('roomKey', key);
 	});
 
 	socket.on('join', (name: string, key: string) => {
-		// players = players.concat({ id: socket.id, name });
-		players[socket.id] = name;
+		players[socket.id] = { name, key };
+		if (io.nsps[`/${Games.Resistance}`].adapter.rooms[key]) {
+			socket.emit('validKey');
+			socket.join(`${key}`, () => {
+				const roomSockets = io.nsps[`/${Games.Resistance}`].adapter.rooms[key].sockets;
+				const playerIds = Object.keys(roomSockets);
+				const playerNames = playerIds.map((id): string => players[id].name);
 
-		socket.join(`${key}`, () => {
-			const roomSockets = io.nsps[`/${Games.Resistance}`].adapter.rooms[key].sockets;
-			const playerIds = Object.keys(roomSockets);
-			const playerNames = playerIds.map((id): string => players[id]);
-
-			io.of(`/${Games.Resistance}`).in(`${key}`).emit('players', playerNames);
-		});
+				io.of(`/${Games.Resistance}`).in(`${key}`).emit('players', playerNames);
+			});
+		} else {
+			socket.emit('invalidKey');
+		}
 	});
 
 	socket.on('getPlayers', (key: string) => {
 		const roomSockets = io.nsps[`/${Games.Resistance}`].adapter.rooms[key].sockets;
 		const playerIds = Object.keys(roomSockets);
-		const playerNames = playerIds.map((id): string => players[id]);
+		const playerNames = playerIds.map((id): string => players[id].name);
 
 		socket.emit('players', playerNames);
+	});
+
+	socket.on('disconnect', () => {
+		console.log('disconnect');
+		const key = players[socket.id].key;
+		delete players[socket.id];
+
+		const roomSockets = io.nsps[`/${Games.Resistance}`].adapter.rooms[key].sockets;
+		const playerIds = Object.keys(roomSockets);
+		const playerNames = playerIds.map((id): string => players[id].name);
+
+		io.of(`/${Games.Resistance}`).in(`${key}`).emit('players', playerNames);
 	});
 });
 
