@@ -2,6 +2,7 @@ import express from 'express';
 import socket from 'socket.io';
 
 import { Games, Player } from './types';
+import { generateKey } from './utils';
 
 const app = express();
 
@@ -17,23 +18,32 @@ app.get('/', (_req, res) => {
 const io = socket(server);
 let players: Array<Player> = [];
 
+//TODO: remove room on disconnect
+//TODO: Error handling
+//TODO: check if name is unique in room
 io.of(`/${Games.Resistance}`).on('connection', (socket) => {
 	socket.on('create', (name: string) => {
 		players = players.concat({ id: socket.id, name });
-		socket.emit('roomKey', 'key'); //generate unique key 
+		//TODO: check key is unique
+		const key = generateKey();
+		if (io.nsps[`/${Games.Resistance}`].adapter.rooms[key]) {
+			console.log('ERROR');
+		}
+		socket.emit('roomKey', key);
 	});
 
-	socket.on('getPlayers', () => {
-		const playerNames = players.map(p => p.name);
-		socket.emit('players', playerNames);
-	});
-
-	socket.on('join', (key: string) => {
+	socket.on('join', (name: string, key: string) => {
 		players = players.concat({ id: socket.id, name });
 		socket.join(`${key}`, () => {
 			const playerNames = players.map(p => p.name);
 			io.of(`/${Games.Resistance}`).in(`${key}`).emit('players', playerNames);
 		});
+	});
+
+	//TODO: return players by key instead of all players
+	socket.on('getPlayers', () => {
+		const playerNames = players.map(p => p.name);
+		socket.emit('players', playerNames);
 	});
 });
 
