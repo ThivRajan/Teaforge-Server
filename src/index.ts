@@ -4,33 +4,23 @@ import socket from 'socket.io';
 import { Games, Players, PlayerCounts, RoomGames } from './types';
 import { generateKey } from './utils';
 
-
 const app = express();
-
 const PORT = 3001;
-const server = app.listen(PORT, () => {
-	console.log(`Server running on port ${PORT}`);
-});
 
-app.get('/', (_req, res) => {
-	res.send('server is running');
-});
-
+const server = app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+const io = socket(server);
 
 const players: Players = {};
 const roomGames: RoomGames = {};
-
 const playerCounts: PlayerCounts = {};
 playerCounts[Games.Resistance] = { min: 5, max: 10 };
 
-const io = socket(server);
 //TODO: deal with type error when client leaves room (prob has to do with socket.onclose)
 // i think this error has to do with the server disconnecting & reconnecting
 
 //TODO: delete room if 0 players left in room
 //TODO: remove player or delete room on disconnect if host 
 io.on('connection', (socket) => {
-	//TODO: check the game and names are valid
 	socket.on('create', (name: string, game: Games) => {
 		if (!name) {
 			socket.emit('invalid', 'Please enter a name');
@@ -51,12 +41,9 @@ io.on('connection', (socket) => {
 		socket.emit('players', [name]);
 	});
 
-	//TODO: check the name is non-empty
 	socket.on('join', (name: string, key: string) => {
 		players[socket.id] = { name, key };
-		console.log('NAME: ', name);
-
-		if (name == '') {
+		if (!name) {
 			socket.emit('invalid', 'Please enter a name');
 			return;
 		}
