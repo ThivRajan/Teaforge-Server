@@ -1,8 +1,9 @@
 import express from 'express';
 import socket from 'socket.io';
 
-// import { Games } from './types';
+import { Games, Players, PlayerCounts, RoomGames } from './types';
 import { generateKey } from './utils';
+
 
 const app = express();
 
@@ -15,26 +16,27 @@ app.get('/', (_req, res) => {
 	res.send('server is running');
 });
 
-interface Players {
-	[id: string]: { name: string, key: string };
-}
-const players: Players = {};
 
-interface Rooms {
-	[key: string]: string;
-}
-const rooms: Rooms = {};
+const players: Players = {};
+const roomGames: RoomGames = {};
+
+const playerCounts: PlayerCounts = {};
+playerCounts[Games.Resistance] = { min: 5, max: 10 };
 
 const io = socket(server);
 //TODO: deal with type error when client leaves room (prob has to do with socket.onclose)
 // i think this error has to do with the server disconnecting & reconnecting
 
 //TODO: delete room if 0 players left in room
-//TODO: remove player or delete room on disconnect if host  
-//TODO: make max capacity for room
+//TODO: remove player or delete room on disconnect if host 
 io.on('connection', (socket) => {
 	//TODO: check the game and names are valid
-	socket.on('create', (name: string, game: string) => {
+	socket.on('create', (name: string, game: Games) => {
+		if (!name) {
+			socket.emit('invalid', 'Please enter a name');
+			return;
+		}
+
 		let key = generateKey();
 		/* Generate unique key */
 		while (io.sockets.adapter.rooms[key]) {
@@ -42,7 +44,7 @@ io.on('connection', (socket) => {
 		}
 
 		players[socket.id] = { name: name.trim(), key };
-		rooms[key] = game;
+		roomGames[key] = game;
 
 		socket.join(`${key}`);
 		socket.emit('roomKey', key);
@@ -52,22 +54,37 @@ io.on('connection', (socket) => {
 	//TODO: check the name is non-empty
 	socket.on('join', (name: string, key: string) => {
 		players[socket.id] = { name, key };
-		if (io.sockets.adapter.rooms[key]) {
-			const roomSockets = io.sockets.adapter.rooms[key].sockets;
-			const playerIds = Object.keys(roomSockets);
-			const playerNames = playerIds.map((id): string => players[id].name);
+		console.log('NAME: ', name);
 
-			name = name.trim();
-			if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
-				socket.emit('valid', rooms[key]);
-				socket.join(`${key}`);
-				playerNames.push(name);
-				io.of('/').in(`${key}`).emit('players', playerNames);
-			} else {
-				socket.emit('invalid', 'Name is already taken');
-			}
-		} else {
+		if (name == '') {
+			socket.emit('invalid', 'Please enter a name');
+			return;
+		}
+
+		const room = io.sockets.adapter.rooms[key];
+		if (!room) {
 			socket.emit('invalid', 'Key is invalid');
+			return;
+		}
+
+		const game: Games = roomGames[key];
+		if (room.length > playerCounts[game].max) {
+			socket.emit('invalid', 'Room is full, please join another room');
+			return;
+		}
+
+		const roomSockets = room.sockets;
+		const playerIds = Object.keys(roomSockets);
+		const playerNames = playerIds.map((id): string => players[id].name);
+
+		name = name.trim();
+		if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
+			socket.emit('valid', roomGames[key]);
+			socket.join(`${key}`);
+			playerNames.push(name);
+			io.of('/').in(`${key}`).emit('players', playerNames);
+		} else {
+			socket.emit('invalid', 'Name is already taken');
 		}
 	});
 
@@ -77,6 +94,15 @@ io.on('connection', (socket) => {
 		const playerNames = playerIds.map((id): string => players[id].name);
 
 		socket.emit('players', playerNames);
+	});
+
+	socket.on('start', () => {
+		const key = players[socket.id].key;
+		const roomSize = io.sockets.adapter.rooms[key].length;
+		const game = roomGames[key];
+
+		if (roomSize >= playerCounts[game].min) io.of('/').in(`${key}`).emit('start');
+		else socket.emit('invalid', 'Not enough players');
 	});
 
 	socket.on('disconnect', () => {

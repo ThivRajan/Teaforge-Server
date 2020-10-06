@@ -1,12 +1,15 @@
-export interface Player {
-	id: string;
-	name: string;
-}
-
-export interface Error {
-	error: string;
-}
-
 export enum Games {
 	Resistance = 'resistance'
+}
+
+export interface PlayerCounts {
+	[game: string]: { min: number, max: number };
+}
+
+export interface Players {
+	[id: string]: { name: string, key: string };
+}
+
+export interface RoomGames {
+	[key: string]: Games;
 }
