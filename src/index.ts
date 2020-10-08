@@ -15,8 +15,6 @@ const rooms: Rooms = {};
 const playerCounts: PlayerCounts = {};
 playerCounts[Games.Resistance] = { min: 5, max: 10 };
 
-//TODO: deal with type error when client leaves room (prob has to do with socket.onclose)
-// i think this error has to do with the server disconnecting & reconnecting
 io.on('connection', (socket) => {
 	socket.on('create', (name: string, game: Games) => {
 		if (!name) {
@@ -79,16 +77,19 @@ io.on('connection', (socket) => {
 		else socket.emit('invalid', 'Not enough players');
 	});
 
-	//TODO: delete room if 0 players left in room
-	//TODO: remove player or delete room on disconnect if host 
 	socket.on('disconnect', () => {
 		const key = players[socket.id].key;
+		const name = players[socket.id].name;
 		rooms[key].players = rooms[key]
 			.players
-			.filter(p => p !== players[socket.id].name);
+			.filter(p => p !== name);
 		delete players[socket.id];
 
-		io.of('/').in(`${key}`).emit('update', rooms[key]);
+		if (!io.sockets.adapter.rooms[key]) delete rooms[key];
+		else {
+			if (rooms[key].host === name) rooms[key].host = rooms[key].players[0];
+			io.of('/').in(`${key}`).emit('update', rooms[key]);
+		}
 	});
 });
 
