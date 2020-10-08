@@ -38,7 +38,6 @@ io.on('connection', (socket) => {
 	});
 
 	socket.on('join', (name: string, key: string) => {
-		players[socket.id] = { name, key };
 		if (!name) {
 			socket.emit('invalid', 'Please enter a name');
 			return;
@@ -56,6 +55,7 @@ io.on('connection', (socket) => {
 			return;
 		}
 
+		players[socket.id] = { name, key };
 		const playerNames = rooms[key].players;
 		name = name.trim();
 		if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
@@ -78,6 +78,8 @@ io.on('connection', (socket) => {
 	});
 
 	socket.on('disconnect', () => {
+		if (!players[socket.id]) return;
+
 		const key = players[socket.id].key;
 		const name = players[socket.id].name;
 		rooms[key].players = rooms[key]
