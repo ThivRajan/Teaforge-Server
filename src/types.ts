@@ -1,4 +1,4 @@
-export enum Games {
+export enum Game {
 	Resistance = 'resistance'
 }
 
@@ -11,7 +11,7 @@ export interface PlayerCounts {
 }
 
 type RoomInfo = {
-	name: Games;
+	name: Game;
 	reqPlayers: number;
 	host: string;
 	players: string[];

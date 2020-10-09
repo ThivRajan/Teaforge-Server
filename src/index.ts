@@ -1,22 +1,26 @@
+/* eslint-disable indent */
 import express from 'express';
 import socket from 'socket.io';
 
-import { Games, Players, PlayerCounts, Rooms } from './types';
+import { Game, Players, PlayerCounts, Rooms } from './types';
 import { generateKey } from './utils';
+
+import Resistance from './games/resistance';
 
 const app = express();
 const PORT = 3001;
 
 const server = app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
-const io = socket(server);
+export const io = socket(server);
 
 const players: Players = {};
 const rooms: Rooms = {};
 const playerCounts: PlayerCounts = {};
-playerCounts[Games.Resistance] = { min: 5, max: 10 };
+playerCounts[Game.Resistance] = { min: 5, max: 10 };
 
+//TODO: store socket ids in 'players' so names are mapped to socket ids
 io.on('connection', (socket) => {
-	socket.on('create', (name: string, game: Games) => {
+	socket.on('create', (name: string, game: Game) => {
 		if (!name) {
 			socket.emit('invalid', 'Please enter a name');
 			return;
@@ -49,7 +53,7 @@ io.on('connection', (socket) => {
 			return;
 		}
 
-		const game: Games = rooms[key].name;
+		const game: Game = rooms[key].name;
 		if (room.length > playerCounts[game].max) {
 			socket.emit('invalid', 'Room is full, please join another room');
 			return;
@@ -75,6 +79,9 @@ io.on('connection', (socket) => {
 
 		if (roomSize >= playerCounts[game].min) io.of('/').in(`${key}`).emit('start');
 		else socket.emit('invalid', 'Not enough players');
+
+		//TODO: maybe don't need 
+		startGame(game, key);
 	});
 
 	socket.on('disconnect', () => {
@@ -95,5 +102,15 @@ io.on('connection', (socket) => {
 	});
 });
 
+const startGame = (name: Game, key: string) => {
+	let game;
+	switch (name) {
+		case Game.Resistance:
+			game = new Resistance(key);
+			break;
+		default:
+			return;
+	}
 
-
+	game.start();
+};
