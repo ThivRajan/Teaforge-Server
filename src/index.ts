@@ -81,11 +81,13 @@ io.on('connection', (socket) => {
 		const roomSize = rooms[key].players.length;
 		const game = rooms[key].name;
 
-		if (roomSize >= playerCounts[game].min) io.of('/').in(`${key}`).emit('start');
-		else socket.emit('invalid', 'Not enough players');
-
-		//TODO: maybe don't need game
-		startGame(game, key);
+		if (roomSize >= playerCounts[game].min) {
+			io.of('/').in(`${key}`).emit('start');
+			//TODO: maybe don't need game
+			startGame(game, key);
+		} else {
+			socket.emit('invalid', 'Not enough players');
+		}
 	});
 
 	socket.on('disconnect', () => {

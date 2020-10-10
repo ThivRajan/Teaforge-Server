@@ -1,10 +1,10 @@
 /* eslint-disable indent */
 
 //TODO: tsconfig issue
-// const resistanceRoles = ['Resistance', 'Spy'];
-export const generateRoles = (roomSize: number): void => {
+export const generateRoles = (roomSize: number): string[] => {
 	const resistance = [...Array(roomSize).keys()];
 	const spies: number[] = [];
+	const roles: string[] = [];
 
 	let numSpies: number;
 	switch (roomSize) {
@@ -32,6 +32,9 @@ export const generateRoles = (roomSize: number): void => {
 		maxNumbers--;
 	}
 
-	console.log('spies', spies);
-	console.log('resistance', resistance);
+	//TODO: consider making these roles into constants
+	spies.forEach(idx => roles[idx] = 'spy');
+	resistance.forEach(idx => roles[idx] = 'resistance');
+
+	return roles;
 };
