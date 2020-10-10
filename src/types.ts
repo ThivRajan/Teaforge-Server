@@ -21,3 +21,9 @@ export interface Rooms {
 	[key: string]: RoomInfo;
 }
 
+/* Resistance Types */
+export interface Mission {
+	players: number,
+	result: 'pass' | 'fail' | ''
+}
+
