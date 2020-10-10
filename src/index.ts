@@ -13,12 +13,14 @@ const PORT = 3001;
 const server = app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
 export const io = socket(server);
 
-const players: Players = {};
+export const players: Players = {};
+
 const rooms: Rooms = {};
 const playerCounts: PlayerCounts = {};
-playerCounts[Game.Resistance] = { min: 5, max: 10 };
+//TODO: change min to 5 when finished
+playerCounts[Game.Resistance] = { min: 2, max: 10 };
 
-//TODO: store socket ids in 'players' so names are mapped to socket ids
+//TODO: throw more errors on invalid cases
 io.on('connection', (socket) => {
 	socket.on('create', (name: string, game: Game) => {
 		if (!name) {
@@ -47,6 +49,7 @@ io.on('connection', (socket) => {
 			return;
 		}
 
+		key = key.toUpperCase();
 		const room = io.sockets.adapter.rooms[key];
 		if (!room) {
 			socket.emit('invalid', 'Key is invalid');
@@ -72,6 +75,7 @@ io.on('connection', (socket) => {
 		}
 	});
 
+	//TODO: min player count check not working
 	socket.on('start', () => {
 		const key = players[socket.id].key;
 		const roomSize = rooms[key].players.length;
@@ -80,7 +84,7 @@ io.on('connection', (socket) => {
 		if (roomSize >= playerCounts[game].min) io.of('/').in(`${key}`).emit('start');
 		else socket.emit('invalid', 'Not enough players');
 
-		//TODO: maybe don't need 
+		//TODO: maybe don't need game
 		startGame(game, key);
 	});
 
