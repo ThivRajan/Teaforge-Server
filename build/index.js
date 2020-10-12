@@ -3,19 +3,24 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.players = exports.io = void 0;
+/* eslint-disable indent */
 const express_1 = __importDefault(require("express"));
 const socket_io_1 = __importDefault(require("socket.io"));
 const types_1 = require("./types");
 const utils_1 = require("./utils");
+const resistance_1 = __importDefault(require("./games/resistance"));
 const app = express_1.default();
 const PORT = 3001;
 const server = app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
-const io = socket_io_1.default(server);
-const players = {};
+exports.io = socket_io_1.default(server);
+exports.players = {};
 const rooms = {};
 const playerCounts = {};
-playerCounts[types_1.Games.Resistance] = { min: 5, max: 10 };
-io.on('connection', (socket) => {
+//TODO: change min to 5 when finished
+playerCounts[types_1.Game.Resistance] = { min: 2, max: 10 };
+//TODO: throw more errors on invalid cases
+exports.io.on('connection', (socket) => {
     socket.on('create', (name, game) => {
         if (!name) {
             socket.emit('invalid', 'Please enter a name');
@@ -23,9 +28,9 @@ io.on('connection', (socket) => {
         }
         /* Generate unique key */
         let key = utils_1.generateKey();
-        while (io.sockets.adapter.rooms[key])
+        while (exports.io.sockets.adapter.rooms[key])
             key = utils_1.generateKey();
-        players[socket.id] = { name: name.trim(), key };
+        exports.players[socket.id] = { name: name.trim(), key };
         rooms[key] = {
             name: game,
             reqPlayers: playerCounts[game].min,
@@ -35,12 +40,12 @@ io.on('connection', (socket) => {
         socket.emit('valid', key, rooms[key]);
     });
     socket.on('join', (name, key) => {
-        players[socket.id] = { name, key };
         if (!name) {
             socket.emit('invalid', 'Please enter a name');
             return;
         }
-        const room = io.sockets.adapter.rooms[key];
+        key = key.toUpperCase();
+        const room = exports.io.sockets.adapter.rooms[key];
         if (!room) {
             socket.emit('invalid', 'Key is invalid');
             return;
@@ -50,40 +55,59 @@ io.on('connection', (socket) => {
             socket.emit('invalid', 'Room is full, please join another room');
             return;
         }
+        exports.players[socket.id] = { name, key };
         const playerNames = rooms[key].players;
         name = name.trim();
         if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
             rooms[key].players = [...playerNames, name];
             socket.emit('valid', rooms[key]);
             socket.join(`${key}`);
-            io.of('/').in(`${key}`).emit('update', rooms[key]);
+            exports.io.of('/').in(`${key}`).emit('update', rooms[key]);
         }
         else {
             socket.emit('invalid', 'Name is already taken');
         }
     });
+    //TODO: min player count check not working
     socket.on('start', () => {
-        const key = players[socket.id].key;
+        const key = exports.players[socket.id].key;
         const roomSize = rooms[key].players.length;
         const game = rooms[key].name;
-        if (roomSize >= playerCounts[game].min)
-            io.of('/').in(`${key}`).emit('start');
-        else
+        if (roomSize >= playerCounts[game].min) {
+            exports.io.of('/').in(`${key}`).emit('start');
+            //TODO: maybe don't need game
+            startGame(game, key);
+        }
+        else {
             socket.emit('invalid', 'Not enough players');
+        }
     });
     socket.on('disconnect', () => {
-        const key = players[socket.id].key;
-        const name = players[socket.id].name;
+        if (!exports.players[socket.id])
+            return;
+        const key = exports.players[socket.id].key;
+        const name = exports.players[socket.id].name;
         rooms[key].players = rooms[key]
             .players
             .filter(p => p !== name);
-        delete players[socket.id];
-        if (!io.sockets.adapter.rooms[key])
+        delete exports.players[socket.id];
+        if (!exports.io.sockets.adapter.rooms[key])
             delete rooms[key];
         else {
             if (rooms[key].host === name)
                 rooms[key].host = rooms[key].players[0];
-            io.of('/').in(`${key}`).emit('update', rooms[key]);
+            exports.io.of('/').in(`${key}`).emit('update', rooms[key]);
         }
     });
 });
+const startGame = (name, key) => {
+    let game;
+    switch (name) {
+        case types_1.Game.Resistance:
+            game = new resistance_1.default(key);
+            break;
+        default:
+            return;
+    }
+    game.start();
+};

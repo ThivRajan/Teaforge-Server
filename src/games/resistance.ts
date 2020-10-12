@@ -30,6 +30,8 @@ class Resistance {
 				if (this.roles.length) {
 					socket.emit('role', this.roles.pop());
 					socket.emit('missions', this.missions);
+					socket.emit('teamCreation');
+					socket.emit('teamLeader', 'thiv');
 				}
 			});
 		});
