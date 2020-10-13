@@ -23,7 +23,17 @@ export interface Rooms {
 
 /* Resistance Types */
 export interface Mission {
-	players: number,
-	result: 'pass' | 'fail' | ''
+	numPlayers: number,
+	result: 'passed' | 'failed' | ''
+}
+
+export interface Votes {
+	approve: number,
+	reject: number
+}
+
+export interface Result {
+	pass: number,
+	fail: number
 }
 

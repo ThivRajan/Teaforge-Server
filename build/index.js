@@ -74,9 +74,8 @@ exports.io.on('connection', (socket) => {
         const roomSize = rooms[key].players.length;
         const game = rooms[key].name;
         if (roomSize >= playerCounts[game].min) {
-            exports.io.of('/').in(`${key}`).emit('start');
-            //TODO: maybe don't need game
             startGame(game, key);
+            exports.io.of('/').in(`${key}`).emit('start');
         }
         else {
             socket.emit('invalid', 'Not enough players');
