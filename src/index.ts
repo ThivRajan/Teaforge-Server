@@ -82,8 +82,8 @@ io.on('connection', (socket) => {
 		const game = rooms[key].name;
 
 		if (roomSize >= playerCounts[game].min) {
-			startGame(game, key);
 			io.of('/').in(`${key}`).emit('start');
+			startGame(game, key, rooms[key].players);
 		} else {
 			socket.emit('invalid', 'Not enough players');
 		}
@@ -107,11 +107,11 @@ io.on('connection', (socket) => {
 	});
 });
 
-const startGame = (name: Game, key: string) => {
+const startGame = (name: Game, key: string, players: string[]) => {
 	let game;
 	switch (name) {
 		case Game.Resistance:
-			game = new Resistance(key);
+			game = new Resistance(key, players);
 			break;
 		default:
 			return;

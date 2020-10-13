@@ -3,21 +3,30 @@ import { Mission, Votes, Result } from '../types';
 import { generateRoles, MISSION_TEAMS } from './gameUtils';
 
 //TODO: make constants for players per mission based on room size
+//TODO: make constant for 'invalid'
 class Resistance {
 	key: string;
+
 	roles: string[];
+	sockets: SocketIO.Socket[];
+	players: string[];
+	team: string[];
+
 	missionIdx: number;
 	missions: Mission[] = [];
-	sockets: SocketIO.Socket[];
-	leaderIndex = 0; //TODO: randomize this in constructor
+
+	leaderIdx = 0; //TODO: randomize this in constructor
 	votes: Votes;
 	missionResult: Result
 	//TODO: maybe have room size class variable
 
-	constructor(key: string) {
+	constructor(key: string, players: string[]) {
 		this.key = key;
-		const roomPlayers = io.sockets.adapter.rooms[this.key];
-		const playerIds = Object.keys(roomPlayers.sockets);
+		this.players = players;
+		this.team = [];
+
+		const playerObjects = io.sockets.adapter.rooms[this.key];
+		const playerIds = Object.keys(playerObjects.sockets);
 		this.sockets = playerIds.map(id => io.sockets.connected[id]);
 
 		//TODO: change these to accommodate room size
@@ -29,29 +38,42 @@ class Resistance {
 		this.votes = { approve: 0, reject: 0 };
 		this.missionResult = { pass: 0, fail: 0 };
 		this.missionIdx = 0;
-
-		this.start();
 	}
 
 	//TODO: maybe split this method into several methods, so the nesting isn't so ugly
+	//TODO: prevent players from entering room with game started
 	start = (): void => {
+		io.of('/').in(`${this.key}`).emit('missions', this.missions);
 		this.sockets.forEach(socket => {
 			socket.on('ready', () => {
 				if (this.roles.length) {
 					socket.emit('role', this.roles.pop());
-					socket.emit('missions', this.missions);
 					socket.emit('teamCreation');
-					socket.emit('teamLeader', 'thiv'); //TODO: get leader from players
+					socket.emit('teamLeader', this.players[this.leaderIdx]);
+				}
+			});
+
+			socket.on('teamUpdate', (type, player) => {
+				if (type === 'choose') this.team = this.team.concat(player);
+				else this.team = this.team.filter(p => p !== player);
+				io.of('/').in(`${this.key}`).emit('teamUpdate', this.team);
+			});
+
+			socket.on('teamConfirm', () => {
+				if (this.team.length === this.missions[this.missionIdx].numPlayers) {
+					io.of('/').in(`${this.key}`).emit('teamConfirm', this.team);
+				} else {
+					socket.emit('invalid', 'Not enough players');
 				}
 			});
 
 			socket.on('vote', (vote) => {
 				vote === 'approve' ? this.votes.approve += 1 : this.votes.reject += 1;
 
-				const roomSize = io.sockets.adapter.rooms[this.key].length;
+				const roomSize = this.players.length;
 				if (this.votes.approve + this.votes.reject === roomSize) {
 					if (this.votes.approve > this.votes.reject) {
-						this.leaderIndex = (this.leaderIndex + 1) % roomSize;
+						this.leaderIdx = (this.leaderIdx + 1) % roomSize;
 						io.of('/').in(`${this.key}`).emit('approved');
 					} else {
 						io.of('/').in(`${this.key}`).emit('rejected');
@@ -65,7 +87,7 @@ class Resistance {
 					? this.missionResult.pass += 1
 					: this.missionResult.fail += 1;
 
-				const roomSize = io.sockets.adapter.rooms[this.key].length;
+				const roomSize = this.players.length;
 				if (this.missionResult.pass + this.missionResult.fail === roomSize) {
 					const result = this.missionResult.fail === 0 ? 'passed' : 'failed';
 					io.of('/').in(`${this.key}`).emit(result);
@@ -80,10 +102,15 @@ class Resistance {
 							mission.result === 'passed' ? resistance += 1 : spies += 1
 					);
 
-					if (resistance > spies)
-						io.of('/').in(`${this.key}`).emit('gameOver', 'spies');
-					if (spies > resistance)
+					if (resistance === 3) {
 						io.of('/').in(`${this.key}`).emit('gameOver', 'resistance');
+						return;
+					}
+
+					if (spies === 3) {
+						io.of('/').in(`${this.key}`).emit('gameOver', 'spies');
+						return;
+					}
 				}
 			});
 		});
