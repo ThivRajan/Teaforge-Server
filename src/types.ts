@@ -15,6 +15,7 @@ type RoomInfo = {
 	reqPlayers: number;
 	host: string;
 	players: string[];
+	gameStarted: boolean;
 }
 
 export interface Rooms {
@@ -36,4 +37,3 @@ export interface Result {
 	pass: number,
 	fail: number
 }
-

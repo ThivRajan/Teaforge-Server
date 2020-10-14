@@ -13,18 +13,20 @@ const PORT = 3001;
 const server = app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
 export const io = socket(server);
 
+export const INVALID_ACTION = 'invalid';
+const VALID_ACTION = 'valid';
+
 export const players: Players = {};
 
 const rooms: Rooms = {};
 const playerCounts: PlayerCounts = {};
-//TODO: change min to 5 when finished
+//TODO-DONE: change min to 5
 playerCounts[Game.Resistance] = { min: 2, max: 10 };
 
-//TODO: throw more errors on invalid cases
 io.on('connection', (socket) => {
 	socket.on('create', (name: string, game: Game) => {
 		if (!name) {
-			socket.emit('invalid', 'Please enter a name');
+			socket.emit(INVALID_ACTION, 'Please enter a name');
 			return;
 		}
 
@@ -36,29 +38,39 @@ io.on('connection', (socket) => {
 		rooms[key] = {
 			name: game,
 			reqPlayers: playerCounts[game].min,
-			players: [name], host: name
+			players: [name],
+			host: name,
+			gameStarted: false
 		};
 
 		socket.join(`${key}`);
-		socket.emit('valid', key, rooms[key]);
+		socket.emit(VALID_ACTION, key, rooms[key]);
 	});
 
 	socket.on('join', (name: string, key: string) => {
 		if (!name) {
-			socket.emit('invalid', 'Please enter a name');
+			socket.emit(INVALID_ACTION, 'Please enter a name');
 			return;
 		}
 
 		key = key.toUpperCase();
 		const room = io.sockets.adapter.rooms[key];
 		if (!room) {
-			socket.emit('invalid', 'Key is invalid');
+			socket.emit(INVALID_ACTION, 'Key is invalid');
+			return;
+		}
+
+		if (rooms[key].gameStarted) {
+			socket.emit(
+				INVALID_ACTION,
+				'Game already started, please join another room '
+			);
 			return;
 		}
 
 		const game: Game = rooms[key].name;
 		if (room.length > playerCounts[game].max) {
-			socket.emit('invalid', 'Room is full, please join another room');
+			socket.emit(INVALID_ACTION, 'Room is full, please join another room');
 			return;
 		}
 
@@ -67,15 +79,14 @@ io.on('connection', (socket) => {
 		name = name.trim();
 		if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
 			rooms[key].players = [...playerNames, name];
-			socket.emit('valid', rooms[key]);
+			socket.emit(VALID_ACTION, rooms[key]);
 			socket.join(`${key}`);
 			io.of('/').in(`${key}`).emit('update', rooms[key]);
 		} else {
-			socket.emit('invalid', 'Name is already taken');
+			socket.emit(INVALID_ACTION, 'Name is already taken');
 		}
 	});
 
-	//TODO: min player count check not working
 	socket.on('start', () => {
 		const key = players[socket.id].key;
 		const roomSize = rooms[key].players.length;
@@ -83,9 +94,10 @@ io.on('connection', (socket) => {
 
 		if (roomSize >= playerCounts[game].min) {
 			io.of('/').in(`${key}`).emit('start');
+			rooms[key].gameStarted = true;
 			startGame(game, key, rooms[key].players);
 		} else {
-			socket.emit('invalid', 'Not enough players');
+			socket.emit(INVALID_ACTION, 'Not enough players');
 		}
 	});
 
@@ -114,8 +126,7 @@ const startGame = (name: Game, key: string, players: string[]) => {
 			game = new Resistance(key, players);
 			break;
 		default:
-			return;
+			throw new Error('Invalid game');
 	}
-
 	game.start();
 };

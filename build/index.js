@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.players = exports.io = void 0;
+exports.players = exports.INVALID_ACTION = exports.io = void 0;
 /* eslint-disable indent */
 const express_1 = __importDefault(require("express"));
 const socket_io_1 = __importDefault(require("socket.io"));
@@ -14,16 +14,18 @@ const app = express_1.default();
 const PORT = 3001;
 const server = app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
 exports.io = socket_io_1.default(server);
+exports.INVALID_ACTION = 'invalid';
+const VALID_ACTION = 'valid';
 exports.players = {};
 const rooms = {};
 const playerCounts = {};
-//TODO: change min to 5 when finished
+//TODO-DONE: change min to 5
 playerCounts[types_1.Game.Resistance] = { min: 2, max: 10 };
 //TODO: throw more errors on invalid cases
 exports.io.on('connection', (socket) => {
     socket.on('create', (name, game) => {
         if (!name) {
-            socket.emit('invalid', 'Please enter a name');
+            socket.emit(exports.INVALID_ACTION, 'Please enter a name');
             return;
         }
         /* Generate unique key */
@@ -34,25 +36,31 @@ exports.io.on('connection', (socket) => {
         rooms[key] = {
             name: game,
             reqPlayers: playerCounts[game].min,
-            players: [name], host: name
+            players: [name],
+            host: name,
+            gameStarted: false
         };
         socket.join(`${key}`);
-        socket.emit('valid', key, rooms[key]);
+        socket.emit(VALID_ACTION, key, rooms[key]);
     });
     socket.on('join', (name, key) => {
         if (!name) {
-            socket.emit('invalid', 'Please enter a name');
+            socket.emit(exports.INVALID_ACTION, 'Please enter a name');
             return;
         }
         key = key.toUpperCase();
         const room = exports.io.sockets.adapter.rooms[key];
         if (!room) {
-            socket.emit('invalid', 'Key is invalid');
+            socket.emit(exports.INVALID_ACTION, 'Key is invalid');
+            return;
+        }
+        if (rooms[key].gameStarted) {
+            socket.emit(exports.INVALID_ACTION, 'Game already started, please join another room ');
             return;
         }
         const game = rooms[key].name;
         if (room.length > playerCounts[game].max) {
-            socket.emit('invalid', 'Room is full, please join another room');
+            socket.emit(exports.INVALID_ACTION, 'Room is full, please join another room');
             return;
         }
         exports.players[socket.id] = { name, key };
@@ -60,25 +68,25 @@ exports.io.on('connection', (socket) => {
         name = name.trim();
         if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
             rooms[key].players = [...playerNames, name];
-            socket.emit('valid', rooms[key]);
+            socket.emit(VALID_ACTION, rooms[key]);
             socket.join(`${key}`);
             exports.io.of('/').in(`${key}`).emit('update', rooms[key]);
         }
         else {
-            socket.emit('invalid', 'Name is already taken');
+            socket.emit(exports.INVALID_ACTION, 'Name is already taken');
         }
     });
-    //TODO: min player count check not working
     socket.on('start', () => {
         const key = exports.players[socket.id].key;
         const roomSize = rooms[key].players.length;
         const game = rooms[key].name;
         if (roomSize >= playerCounts[game].min) {
-            startGame(game, key);
             exports.io.of('/').in(`${key}`).emit('start');
+            rooms[key].gameStarted = true;
+            startGame(game, key, rooms[key].players);
         }
         else {
-            socket.emit('invalid', 'Not enough players');
+            socket.emit(exports.INVALID_ACTION, 'Not enough players');
         }
     });
     socket.on('disconnect', () => {
@@ -99,11 +107,11 @@ exports.io.on('connection', (socket) => {
         }
     });
 });
-const startGame = (name, key) => {
+const startGame = (name, key, players) => {
     let game;
     switch (name) {
         case types_1.Game.Resistance:
-            game = new resistance_1.default(key);
+            game = new resistance_1.default(key, players);
             break;
         default:
             return;
