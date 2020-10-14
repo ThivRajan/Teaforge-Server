@@ -13,9 +13,9 @@ class Resistance {
 	team: string[];
 
 	missionIdx: number;
-	missions: Mission[] = [];
+	missions: Mission[];
 
-	leaderIdx = 0; //TODO: randomize this in constructor
+	leaderIdx: number;
 	votes: Votes;
 	missionResult: Result
 	//TODO: maybe have room size class variable
@@ -23,13 +23,15 @@ class Resistance {
 	constructor(key: string, players: string[]) {
 		this.key = key;
 		this.players = players;
+		this.missions = [];
 		this.team = [];
+		this.leaderIdx = 0; //TODO: randomize this in constructor
 
 		const playerObjects = io.sockets.adapter.rooms[this.key];
 		const playerIds = Object.keys(playerObjects.sockets);
 		this.sockets = playerIds.map(id => io.sockets.connected[id]);
 
-		//TODO: change these to accommodate room size
+		//TODO: change these to accommodate room size when done
 		this.roles = generateRoles(5);
 		MISSION_TEAMS[5].forEach((numPlayers, index) =>
 			this.missions[index] = { numPlayers, result: '' }
@@ -69,14 +71,15 @@ class Resistance {
 
 			socket.on('vote', (vote) => {
 				vote === 'approve' ? this.votes.approve += 1 : this.votes.reject += 1;
-
 				const roomSize = this.players.length;
 				if (this.votes.approve + this.votes.reject === roomSize) {
+					this.leaderIdx = (this.leaderIdx + 1) % roomSize;
+					this.team = [];
 					if (this.votes.approve > this.votes.reject) {
-						this.leaderIdx = (this.leaderIdx + 1) % roomSize;
-						io.of('/').in(`${this.key}`).emit('approved');
+						io.of('/').in(`${this.key}`).emit('teamApproved');
 					} else {
-						io.of('/').in(`${this.key}`).emit('rejected');
+						io.of('/').in(`${this.key}`)
+							.emit('teamRejected', this.players[this.leaderIdx]);
 					}
 					this.votes = { approve: 0, reject: 0 };
 				}
@@ -93,7 +96,7 @@ class Resistance {
 					io.of('/').in(`${this.key}`).emit(result);
 					this.missionResult = { pass: 0, fail: 0 };
 					this.missions[this.missionIdx].result = result;
-					this.missionIdx += 1;
+					this.missionIdx++;
 
 					let resistance = 0;
 					let spies = 0;
