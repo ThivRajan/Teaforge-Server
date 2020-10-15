@@ -1,2 +1,2 @@
-# Teaforge-Server
+# Teaforge
 Backend for Teaforge website

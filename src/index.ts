@@ -13,6 +13,7 @@ const PORT = 3001;
 const server = app.listen(process.env.PORT || PORT, () => {
 	console.log(`Listening on port ${PORT}`);
 });
+
 app.get('/', (_req, res) => res.send('Server running'));
 
 export const io = socket(server);
@@ -25,6 +26,7 @@ export const players: Players = {};
 const rooms: Rooms = {};
 const playerCounts: PlayerCounts = {};
 //TODO-DONE: change min to 5
+//TODO-DONE: write README.md
 playerCounts[Game.Resistance] = { min: 2, max: 10 };
 
 io.on('connection', (socket) => {
