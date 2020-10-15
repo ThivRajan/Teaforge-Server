@@ -21,7 +21,6 @@ const rooms = {};
 const playerCounts = {};
 //TODO-DONE: change min to 5
 playerCounts[types_1.Game.Resistance] = { min: 2, max: 10 };
-//TODO: throw more errors on invalid cases
 exports.io.on('connection', (socket) => {
     socket.on('create', (name, game) => {
         if (!name) {
@@ -32,7 +31,8 @@ exports.io.on('connection', (socket) => {
         let key = utils_1.generateKey();
         while (exports.io.sockets.adapter.rooms[key])
             key = utils_1.generateKey();
-        exports.players[socket.id] = { name: name.trim(), key };
+        name = name.trim();
+        exports.players[socket.id] = { name, key };
         rooms[key] = {
             name: game,
             reqPlayers: playerCounts[game].min,
@@ -41,7 +41,7 @@ exports.io.on('connection', (socket) => {
             gameStarted: false
         };
         socket.join(`${key}`);
-        socket.emit(VALID_ACTION, key, rooms[key]);
+        socket.emit(VALID_ACTION, name, key, rooms[key]);
     });
     socket.on('join', (name, key) => {
         if (!name) {
@@ -68,7 +68,7 @@ exports.io.on('connection', (socket) => {
         name = name.trim();
         if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
             rooms[key].players = [...playerNames, name];
-            socket.emit(VALID_ACTION, rooms[key]);
+            socket.emit(VALID_ACTION, name, key, rooms[key]);
             socket.join(`${key}`);
             exports.io.of('/').in(`${key}`).emit('update', rooms[key]);
         }
@@ -114,7 +114,7 @@ const startGame = (name, key, players) => {
             game = new resistance_1.default(key, players);
             break;
         default:
-            return;
+            throw new Error('Invalid game');
     }
     game.start();
 };

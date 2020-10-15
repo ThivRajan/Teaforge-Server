@@ -34,7 +34,8 @@ io.on('connection', (socket) => {
 		let key = generateKey();
 		while (io.sockets.adapter.rooms[key]) key = generateKey();
 
-		players[socket.id] = { name: name.trim(), key };
+		name = name.trim();
+		players[socket.id] = { name, key };
 		rooms[key] = {
 			name: game,
 			reqPlayers: playerCounts[game].min,
@@ -44,7 +45,7 @@ io.on('connection', (socket) => {
 		};
 
 		socket.join(`${key}`);
-		socket.emit(VALID_ACTION, key, rooms[key]);
+		socket.emit(VALID_ACTION, name, key, rooms[key]);
 	});
 
 	socket.on('join', (name: string, key: string) => {
@@ -79,7 +80,7 @@ io.on('connection', (socket) => {
 		name = name.trim();
 		if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
 			rooms[key].players = [...playerNames, name];
-			socket.emit(VALID_ACTION, rooms[key]);
+			socket.emit(VALID_ACTION, name, key, rooms[key]);
 			socket.join(`${key}`);
 			io.of('/').in(`${key}`).emit('update', rooms[key]);
 		} else {

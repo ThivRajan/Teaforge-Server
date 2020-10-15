@@ -8,7 +8,7 @@ class Resistance {
             index_1.io.of('/').in(`${this.key}`).emit('missions', this.missions);
             this.sockets.forEach(socket => {
                 socket.on('ready', () => {
-                    /* Check number of players > number of roles generated */
+                    /* Ensures number of players <= number of roles generated */
                     if (this.roles.length) {
                         socket.emit('role', this.roles.pop());
                         socket.emit('teamCreation');
@@ -92,6 +92,7 @@ class Resistance {
         const playerObjects = index_1.io.sockets.adapter.rooms[this.key];
         const playerIds = Object.keys(playerObjects.sockets);
         this.sockets = playerIds.map(id => index_1.io.sockets.connected[id]);
+        //TODO: figure out a way to handle players leaving in the middle of game
         //TODO-DONE: change these to accommodate room size
         this.roles = gameUtils_1.generateRoles(5);
         gameUtils_1.MISSION_TEAMS[5].forEach((numPlayers, index) => this.missions[index] = { numPlayers, result: '' });
