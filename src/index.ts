@@ -11,6 +11,8 @@ const app = express();
 const PORT = 3001;
 
 const server = app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+app.get('/', (_req, res) => res.send('Server running'));
+
 export const io = socket(server);
 
 export const INVALID_ACTION = 'invalid';
