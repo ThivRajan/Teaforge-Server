@@ -10,7 +10,9 @@ import Resistance from './games/resistance';
 const app = express();
 const PORT = 3001;
 
-const server = app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+const server = app.listen(process.env.PORT || PORT, () => {
+	console.log(`Listening on port ${PORT}`);
+});
 app.get('/', (_req, res) => res.send('Server running'));
 
 export const io = socket(server);
