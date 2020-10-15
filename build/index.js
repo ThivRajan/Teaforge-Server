@@ -13,6 +13,7 @@ const resistance_1 = __importDefault(require("./games/resistance"));
 const app = express_1.default();
 const PORT = 3001;
 const server = app.listen(PORT, () => console.log(`Listening on port ${PORT}`));
+app.get('/', (_req, res) => res.send('Server running'));
 exports.io = socket_io_1.default(server);
 exports.INVALID_ACTION = 'invalid';
 const VALID_ACTION = 'valid';
