@@ -28,14 +28,13 @@ class Resistance {
 		this.sockets = playerIds.map(id => io.sockets.connected[id]);
 
 		//TODO: figure out a way to handle players leaving in the middle of game
-		//TODO: emit vote results
 		//TODO-DONE: change these to accommodate room size
 		this.roles = generateRoles(5);
 		MISSION_TEAMS[5].forEach((numPlayers, index) =>
 			this.missions[index] = { numPlayers, result: '' }
 		);
 
-		this.votes = { approve: 0, reject: 0 };
+		this.votes = { approve: [], reject: [] };
 		this.missionResult = { pass: 0, fail: 0 };
 		this.missionIdx = 0;
 	}
@@ -79,14 +78,21 @@ class Resistance {
 				}
 			});
 
-			socket.on('vote', (vote) => {
-				vote === 'approve' ? this.votes.approve += 1 : this.votes.reject += 1;
+			socket.on('vote', (vote, name) => {
+				if (vote === 'approve') this.votes.approve.push(name);
+				else this.votes.reject.push(name);
+
 				const roomSize = this.players.length;
-				if (this.votes.approve + this.votes.reject === roomSize) {
+				if (this.votes.approve.length + this.votes.reject.length === roomSize) {
 					this.leaderIdx = (this.leaderIdx + 1) % roomSize;
 					this.team = [];
 					if (this.votes.approve > this.votes.reject) {
 						io.of('/').in(`${this.key}`).emit('teamApproved');
+						io.of('/').in(`${this.key}`)
+							.emit(
+								'transition',
+								'Team has been approved, mission will begin shortly.'
+							);
 					} else {
 						io.of('/').in(`${this.key}`)
 							.emit(
@@ -94,9 +100,9 @@ class Resistance {
 								'Team has been rejected, new leader will selected.'
 							);
 						io.of('/').in(`${this.key}`)
-							.emit('teamRejected', this.players[this.leaderIdx]);
+							.emit('teamRejected', this.players[this.leaderIdx], this.votes);
 					}
-					this.votes = { approve: 0, reject: 0 };
+					this.votes = { approve: [], reject: [] };
 				}
 			});
 

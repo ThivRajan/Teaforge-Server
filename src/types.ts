@@ -29,8 +29,8 @@ export interface Mission {
 }
 
 export interface Votes {
-	approve: number,
-	reject: number
+	approve: string[],
+	reject: string[]
 }
 
 export interface Result {
