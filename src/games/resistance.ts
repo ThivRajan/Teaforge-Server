@@ -28,6 +28,7 @@ class Resistance {
 		this.sockets = playerIds.map(id => io.sockets.connected[id]);
 
 		//TODO: figure out a way to handle players leaving in the middle of game
+		//TODO: emit vote results
 		//TODO-DONE: change these to accommodate room size
 		this.roles = generateRoles(5);
 		MISSION_TEAMS[5].forEach((numPlayers, index) =>
@@ -45,7 +46,11 @@ class Resistance {
 			socket.on('ready', () => {
 				/* Ensures number of players <= number of roles generated */
 				if (this.roles.length) {
-					socket.emit('role', this.roles.pop());
+					const role = this.roles.pop();
+					if (!role) throw new Error('Missing role');
+
+					socket.emit('role', role);
+					socket.emit('transition', `Your are a ${role} member`);
 					socket.emit('teamCreation');
 					socket.emit('teamLeader', this.players[this.leaderIdx]);
 				}
@@ -84,6 +89,11 @@ class Resistance {
 						io.of('/').in(`${this.key}`).emit('teamApproved');
 					} else {
 						io.of('/').in(`${this.key}`)
+							.emit(
+								'transition',
+								'Team has been rejected, new leader will selected.'
+							);
+						io.of('/').in(`${this.key}`)
 							.emit('teamRejected', this.players[this.leaderIdx]);
 					}
 					this.votes = { approve: 0, reject: 0 };
@@ -119,6 +129,13 @@ class Resistance {
 						return;
 					}
 
+					io.of('/').in(`${this.key}`)
+						.emit(
+							'transition',
+							`The mission has ${result}. New team leader will
+							be chosen for the next mission. `
+						);
+
 					io.of('/').in(`${this.key}`).emit('teamCreation');
 					io.of('/').in(`${this.key}`).emit('teamUpdate', this.team);
 					io.of('/').in(`${this.key}`).emit(
@@ -130,7 +147,6 @@ class Resistance {
 						this.players[this.leaderIdx]
 					);
 					io.of('/').in(`${this.key}`).emit('missions', this.missions);
-
 				}
 			});
 		});

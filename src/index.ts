@@ -26,7 +26,7 @@ export const players: Players = {};
 const rooms: Rooms = {};
 const playerCounts: PlayerCounts = {};
 //TODO-DONE: change min to 5
-//TODO-DONE: write README.md
+//TODO-DONE: README.md
 playerCounts[Game.Resistance] = { min: 2, max: 10 };
 
 io.on('connection', (socket) => {
