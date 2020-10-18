@@ -7,6 +7,15 @@ class Resistance {
         this.start = () => {
             index_1.io.of('/').in(`${this.key}`).emit('missions', this.missions);
             this.sockets.forEach(socket => {
+                socket.on('disconnect', () => {
+                    index_1.io.of('/').in(`${this.key}`).emit('playerDisconnected');
+                    this.sockets.forEach(s => {
+                        this.events.forEach(event => {
+                            s.removeAllListeners(event);
+                        });
+                    });
+                    index_1.rooms[this.key].gameStarted = false;
+                });
                 socket.on('ready', () => {
                     /* Ensures number of players <= number of roles generated */
                     if (this.roles.length) {
@@ -113,6 +122,8 @@ class Resistance {
         this.votes = { approve: [], reject: [] };
         this.missionResult = { pass: 0, fail: 0 };
         this.missionIdx = 0;
+        this.events = ['ready', 'teamUpdate', 'teamConfirm',
+            'vote', 'mission', 'disconnect'];
     }
 }
 exports.default = Resistance;

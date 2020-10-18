@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.players = exports.INVALID_ACTION = exports.io = void 0;
+exports.rooms = exports.players = exports.INVALID_ACTION = exports.io = void 0;
 /* eslint-disable indent */
 const express_1 = __importDefault(require("express"));
 const socket_io_1 = __importDefault(require("socket.io"));
@@ -20,10 +20,13 @@ exports.io = socket_io_1.default(server);
 exports.INVALID_ACTION = 'invalid';
 const VALID_ACTION = 'valid';
 exports.players = {};
-const rooms = {};
+exports.rooms = {};
 const playerCounts = {};
 //TODO-DONE: change min to 5
 //TODO-DONE: README.md
+//TODO: voting and mission results not adding up, fix it
+//TODO: check that events are really getting removed
+// (use logs)
 playerCounts[types_1.Game.Resistance] = { min: 2, max: 10 };
 exports.io.on('connection', (socket) => {
     socket.on('create', (name, game) => {
@@ -37,7 +40,7 @@ exports.io.on('connection', (socket) => {
             key = utils_1.generateKey();
         name = name.trim();
         exports.players[socket.id] = { name, key };
-        rooms[key] = {
+        exports.rooms[key] = {
             name: game,
             reqPlayers: playerCounts[game].min,
             players: [name],
@@ -45,7 +48,7 @@ exports.io.on('connection', (socket) => {
             gameStarted: false
         };
         socket.join(`${key}`);
-        socket.emit(VALID_ACTION, name, key, rooms[key]);
+        socket.emit(VALID_ACTION, name, key, exports.rooms[key]);
     });
     socket.on('join', (name, key) => {
         if (!name) {
@@ -57,23 +60,23 @@ exports.io.on('connection', (socket) => {
             socket.emit(exports.INVALID_ACTION, 'Key is invalid');
             return;
         }
-        if (rooms[key].gameStarted) {
+        if (exports.rooms[key].gameStarted) {
             socket.emit(exports.INVALID_ACTION, 'Game already started, please join another room ');
             return;
         }
-        const game = rooms[key].name;
+        const game = exports.rooms[key].name;
         if (room.length > playerCounts[game].max) {
             socket.emit(exports.INVALID_ACTION, 'Room is full, please join another room');
             return;
         }
         exports.players[socket.id] = { name, key };
-        const playerNames = rooms[key].players;
+        const playerNames = exports.rooms[key].players;
         name = name.trim();
         if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
-            rooms[key].players = [...playerNames, name];
-            socket.emit(VALID_ACTION, name, key, rooms[key]);
+            exports.rooms[key].players = [...playerNames, name];
+            socket.emit(VALID_ACTION, name, key, exports.rooms[key]);
             socket.join(`${key}`);
-            exports.io.of('/').in(`${key}`).emit('update', rooms[key]);
+            exports.io.of('/').in(`${key}`).emit('update', exports.rooms[key]);
         }
         else {
             socket.emit(exports.INVALID_ACTION, 'Name is already taken');
@@ -81,12 +84,12 @@ exports.io.on('connection', (socket) => {
     });
     socket.on('start', () => {
         const key = exports.players[socket.id].key;
-        const roomSize = rooms[key].players.length;
-        const game = rooms[key].name;
+        const roomSize = exports.rooms[key].players.length;
+        const game = exports.rooms[key].name;
         if (roomSize >= playerCounts[game].min) {
             exports.io.of('/').in(`${key}`).emit('start');
-            rooms[key].gameStarted = true;
-            startGame(game, key, rooms[key].players);
+            exports.rooms[key].gameStarted = true;
+            startGame(game, key, exports.rooms[key].players);
         }
         else {
             socket.emit(exports.INVALID_ACTION, 'Not enough players');
@@ -97,16 +100,17 @@ exports.io.on('connection', (socket) => {
             return;
         const key = exports.players[socket.id].key;
         const name = exports.players[socket.id].name;
-        rooms[key].players = rooms[key]
+        exports.rooms[key].players = exports.rooms[key]
             .players
             .filter(p => p !== name);
         delete exports.players[socket.id];
-        if (!exports.io.sockets.adapter.rooms[key])
-            delete rooms[key];
+        if (!exports.io.sockets.adapter.rooms[key]) {
+            delete exports.rooms[key];
+        }
         else {
-            if (rooms[key].host === name)
-                rooms[key].host = rooms[key].players[0];
-            exports.io.of('/').in(`${key}`).emit('update', rooms[key]);
+            if (exports.rooms[key].host === name)
+                exports.rooms[key].host = exports.rooms[key].players[0];
+            exports.io.of('/').in(`${key}`).emit('update', exports.rooms[key]);
         }
     });
 });
