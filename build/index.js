@@ -23,6 +23,7 @@ exports.players = {};
 const rooms = {};
 const playerCounts = {};
 //TODO-DONE: change min to 5
+//TODO-DONE: README.md
 playerCounts[types_1.Game.Resistance] = { min: 2, max: 10 };
 exports.io.on('connection', (socket) => {
     socket.on('create', (name, game) => {
@@ -51,7 +52,6 @@ exports.io.on('connection', (socket) => {
             socket.emit(exports.INVALID_ACTION, 'Please enter a name');
             return;
         }
-        key = key.toUpperCase();
         const room = exports.io.sockets.adapter.rooms[key];
         if (!room) {
             socket.emit(exports.INVALID_ACTION, 'Key is invalid');

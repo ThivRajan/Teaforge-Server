@@ -60,7 +60,6 @@ io.on('connection', (socket) => {
 			return;
 		}
 
-		key = key.toUpperCase();
 		const room = io.sockets.adapter.rooms[key];
 		if (!room) {
 			socket.emit(INVALID_ACTION, 'Key is invalid');
