@@ -1,4 +1,4 @@
-import { io, INVALID_ACTION } from '../index';
+import { io, rooms, INVALID_ACTION } from '../index';
 import { Mission, Votes, Result } from '../types';
 import { generateRoles, MISSION_TEAMS } from './gameUtils';
 
@@ -15,6 +15,8 @@ class Resistance {
 	missionIdx: number;
 	missions: Mission[];
 	missionResult: Result;
+
+	events: string[];
 
 	constructor(key: string, players: string[]) {
 		this.key = key;
@@ -37,11 +39,25 @@ class Resistance {
 		this.votes = { approve: [], reject: [] };
 		this.missionResult = { pass: 0, fail: 0 };
 		this.missionIdx = 0;
+
+		this.events = ['ready', 'teamUpdate', 'teamConfirm',
+			'vote', 'mission', 'disconnect'];
 	}
 
 	start = (): void => {
 		io.of('/').in(`${this.key}`).emit('missions', this.missions);
 		this.sockets.forEach(socket => {
+
+			socket.on('disconnect', () => {
+				io.of('/').in(`${this.key}`).emit('playerDisconnected');
+				this.sockets.forEach(s => {
+					this.events.forEach(event => {
+						s.removeAllListeners(event);
+					});
+				});
+				rooms[this.key].gameStarted = false;
+			});
+
 			socket.on('ready', () => {
 				/* Ensures number of players <= number of roles generated */
 				if (this.roles.length) {

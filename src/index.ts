@@ -23,10 +23,11 @@ const VALID_ACTION = 'valid';
 
 export const players: Players = {};
 
-const rooms: Rooms = {};
+export const rooms: Rooms = {};
 const playerCounts: PlayerCounts = {};
 //TODO-DONE: change min to 5
 //TODO-DONE: README.md
+//TODO: voting and mission results not adding up, fix it
 playerCounts[Game.Resistance] = { min: 2, max: 10 };
 
 io.on('connection', (socket) => {
@@ -117,8 +118,9 @@ io.on('connection', (socket) => {
 			.filter(p => p !== name);
 		delete players[socket.id];
 
-		if (!io.sockets.adapter.rooms[key]) delete rooms[key];
-		else {
+		if (!io.sockets.adapter.rooms[key]) {
+			delete rooms[key];
+		} else {
 			if (rooms[key].host === name) rooms[key].host = rooms[key].players[0];
 			io.of('/').in(`${key}`).emit('update', rooms[key]);
 		}
@@ -127,6 +129,7 @@ io.on('connection', (socket) => {
 
 const startGame = (name: Game, key: string, players: string[]) => {
 	let game;
+
 	switch (name) {
 		case Game.Resistance:
 			game = new Resistance(key, players);
@@ -134,5 +137,6 @@ const startGame = (name: Game, key: string, players: string[]) => {
 		default:
 			throw new Error('Invalid game');
 	}
+
 	game.start();
 };
