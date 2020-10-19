@@ -10,11 +10,12 @@ class Resistance {
                 socket.on('disconnect', () => {
                     index_1.io.of('/').in(`${this.key}`).emit('playerDisconnected');
                     this.sockets.forEach(s => {
-                        this.events.forEach(event => {
-                            s.removeAllListeners(event);
-                        });
+                        this.events.forEach(event => s.removeAllListeners(event));
                     });
-                    index_1.rooms[this.key].gameStarted = false;
+                    if (index_1.rooms[this.key])
+                        index_1.rooms[this.key].gameStarted = false;
+                    else
+                        throw new Error('Room does not exist');
                 });
                 socket.on('ready', () => {
                     /* Ensures number of players <= number of roles generated */
@@ -56,7 +57,7 @@ class Resistance {
                     if (this.votes.approve.length + this.votes.reject.length === roomSize) {
                         this.leaderIdx = (this.leaderIdx + 1) % roomSize;
                         this.team = [];
-                        if (this.votes.approve > this.votes.reject) {
+                        if (this.votes.approve.length > this.votes.reject.length) {
                             index_1.io.of('/').in(`${this.key}`).emit('teamApproved');
                             index_1.io.of('/').in(`${this.key}`)
                                 .emit('transition', 'Team has been approved, mission will begin shortly.');
@@ -107,6 +108,8 @@ class Resistance {
                 });
             });
         };
+        this.events = ['ready', 'teamUpdate', 'teamConfirm',
+            'vote', 'mission', 'disconnect'];
         this.key = key;
         this.players = players;
         this.missions = [];
@@ -115,15 +118,12 @@ class Resistance {
         const playerObjects = index_1.io.sockets.adapter.rooms[this.key];
         const playerIds = Object.keys(playerObjects.sockets);
         this.sockets = playerIds.map(id => index_1.io.sockets.connected[id]);
-        //TODO: figure out a way to handle players leaving in the middle of game
         //TODO-DONE: change these to accommodate room size
         this.roles = gameUtils_1.generateRoles(5);
         gameUtils_1.MISSION_TEAMS[5].forEach((numPlayers, index) => this.missions[index] = { numPlayers, result: '' });
         this.votes = { approve: [], reject: [] };
         this.missionResult = { pass: 0, fail: 0 };
         this.missionIdx = 0;
-        this.events = ['ready', 'teamUpdate', 'teamConfirm',
-            'vote', 'mission', 'disconnect'];
     }
 }
 exports.default = Resistance;

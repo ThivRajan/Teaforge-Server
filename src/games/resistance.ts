@@ -1,5 +1,5 @@
 import { io, rooms, INVALID_ACTION } from '../index';
-import { Mission, Votes, Result } from '../types';
+import { Mission, Votes, Result } from '../types/resistance';
 import { generateRoles, MISSION_TEAMS } from './gameUtils';
 
 class Resistance {
@@ -19,6 +19,8 @@ class Resistance {
 	events: string[];
 
 	constructor(key: string, players: string[]) {
+		this.events = ['ready', 'teamUpdate', 'teamConfirm',
+			'vote', 'mission', 'disconnect'];
 		this.key = key;
 		this.players = players;
 		this.missions = [];
@@ -29,7 +31,6 @@ class Resistance {
 		const playerIds = Object.keys(playerObjects.sockets);
 		this.sockets = playerIds.map(id => io.sockets.connected[id]);
 
-		//TODO: figure out a way to handle players leaving in the middle of game
 		//TODO-DONE: change these to accommodate room size
 		this.roles = generateRoles(5);
 		MISSION_TEAMS[5].forEach((numPlayers, index) =>
@@ -39,9 +40,6 @@ class Resistance {
 		this.votes = { approve: [], reject: [] };
 		this.missionResult = { pass: 0, fail: 0 };
 		this.missionIdx = 0;
-
-		this.events = ['ready', 'teamUpdate', 'teamConfirm',
-			'vote', 'mission', 'disconnect'];
 	}
 
 	start = (): void => {
@@ -51,11 +49,10 @@ class Resistance {
 			socket.on('disconnect', () => {
 				io.of('/').in(`${this.key}`).emit('playerDisconnected');
 				this.sockets.forEach(s => {
-					this.events.forEach(event => {
-						s.removeAllListeners(event);
-					});
+					this.events.forEach(event => s.removeAllListeners(event));
 				});
-				rooms[this.key].gameStarted = false;
+				if (rooms[this.key]) rooms[this.key].gameStarted = false;
+				else throw new Error('Room does not exist');
 			});
 
 			socket.on('ready', () => {
@@ -102,7 +99,7 @@ class Resistance {
 				if (this.votes.approve.length + this.votes.reject.length === roomSize) {
 					this.leaderIdx = (this.leaderIdx + 1) % roomSize;
 					this.team = [];
-					if (this.votes.approve > this.votes.reject) {
+					if (this.votes.approve.length > this.votes.reject.length) {
 						io.of('/').in(`${this.key}`).emit('teamApproved');
 						io.of('/').in(`${this.key}`)
 							.emit(
