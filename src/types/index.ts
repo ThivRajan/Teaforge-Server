@@ -10,6 +10,11 @@ export interface PlayerCounts {
 	[game: string]: { min: number, max: number };
 }
 
+export interface PlayerCount {
+	min: number,
+	max: number
+}
+
 type RoomInfo = {
 	name: Game;
 	reqPlayers: number;

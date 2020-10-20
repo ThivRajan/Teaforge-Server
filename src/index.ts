@@ -2,7 +2,7 @@
 import express from 'express';
 import socket from 'socket.io';
 
-import { Game, Players, PlayerCounts, Rooms } from './types';
+import { Game, Players, PlayerCount, Rooms } from './types';
 import { generateKey } from './utils';
 
 import Resistance from './games/resistance';
@@ -24,10 +24,13 @@ const VALID_ACTION = 'valid';
 export const players: Players = {};
 
 export const rooms: Rooms = {};
-const playerCounts: PlayerCounts = {};
+
+const playerCounts: { [key in Game]: PlayerCount } = {
+	[Game.Resistance]: { min: 2, max: 10 }
+};
+
 //TODO-DONE: change min to 5
 //TODO-DONE: README.md
-playerCounts[Game.Resistance] = { min: 2, max: 10 };
 
 io.on('connection', (socket) => {
 	socket.on('create', (name: string, game: Game) => {
