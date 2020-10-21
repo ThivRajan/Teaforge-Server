@@ -21,10 +21,11 @@ exports.INVALID_ACTION = 'invalid';
 const VALID_ACTION = 'valid';
 exports.players = {};
 exports.rooms = {};
-const playerCounts = {};
+const playerCounts = {
+    [types_1.Game.Resistance]: { min: 2, max: 10 }
+};
 //TODO-DONE: change min to 5
 //TODO-DONE: README.md
-playerCounts[types_1.Game.Resistance] = { min: 2, max: 10 };
 exports.io.on('connection', (socket) => {
     socket.on('create', (name, game) => {
         if (!name) {

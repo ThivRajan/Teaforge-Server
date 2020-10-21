@@ -17,21 +17,17 @@ const server = app.listen(process.env.PORT || PORT, () => {
 app.get('/', (_req, res) => res.send('Server running'));
 
 export const io = socket(server);
-
 export const INVALID_ACTION = 'invalid';
 const VALID_ACTION = 'valid';
 
 export const players: Players = {};
-
 export const rooms: Rooms = {};
-
-const playerCounts: { [key in Game]: PlayerCount } = {
+const PLAYER_COUNTS: { [key in Game]: PlayerCount } = {
 	[Game.Resistance]: { min: 2, max: 10 }
 };
 
 //TODO-DONE: change min to 5
 //TODO-DONE: README.md
-
 io.on('connection', (socket) => {
 	socket.on('create', (name: string, game: Game) => {
 		if (!name) {
@@ -47,7 +43,7 @@ io.on('connection', (socket) => {
 		players[socket.id] = { name, key };
 		rooms[key] = {
 			name: game,
-			reqPlayers: playerCounts[game].min,
+			reqPlayers: PLAYER_COUNTS[game].min,
 			players: [name],
 			host: name,
 			gameStarted: false
@@ -78,7 +74,7 @@ io.on('connection', (socket) => {
 		}
 
 		const game: Game = rooms[key].name;
-		if (room.length > playerCounts[game].max) {
+		if (room.length > PLAYER_COUNTS[game].max) {
 			socket.emit(INVALID_ACTION, 'Room is full, please join another room');
 			return;
 		}
@@ -101,7 +97,7 @@ io.on('connection', (socket) => {
 		const roomSize = rooms[key].players.length;
 		const game = rooms[key].name;
 
-		if (roomSize >= playerCounts[game].min) {
+		if (roomSize >= PLAYER_COUNTS[game].min) {
 			io.of('/').in(`${key}`).emit('start');
 			rooms[key].gameStarted = true;
 			startGame(game, key, rooms[key].players);
