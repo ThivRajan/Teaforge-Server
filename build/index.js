@@ -4,7 +4,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.rooms = exports.players = exports.INVALID_ACTION = exports.io = void 0;
-/* eslint-disable indent */
 const express_1 = __importDefault(require("express"));
 const socket_io_1 = __importDefault(require("socket.io"));
 const types_1 = require("./types");
@@ -21,11 +20,9 @@ exports.INVALID_ACTION = 'invalid';
 const VALID_ACTION = 'valid';
 exports.players = {};
 exports.rooms = {};
-const playerCounts = {
-    [types_1.Game.Resistance]: { min: 2, max: 10 }
+const PLAYER_COUNTS = {
+    [types_1.Game.Resistance]: { min: 5, max: 10 }
 };
-//TODO-DONE: change min to 5
-//TODO-DONE: README.md
 exports.io.on('connection', (socket) => {
     socket.on('create', (name, game) => {
         if (!name) {
@@ -40,7 +37,7 @@ exports.io.on('connection', (socket) => {
         exports.players[socket.id] = { name, key };
         exports.rooms[key] = {
             name: game,
-            reqPlayers: playerCounts[game].min,
+            reqPlayers: PLAYER_COUNTS[game].min,
             players: [name],
             host: name,
             gameStarted: false
@@ -63,7 +60,7 @@ exports.io.on('connection', (socket) => {
             return;
         }
         const game = exports.rooms[key].name;
-        if (room.length > playerCounts[game].max) {
+        if (room.length > PLAYER_COUNTS[game].max) {
             socket.emit(exports.INVALID_ACTION, 'Room is full, please join another room');
             return;
         }
@@ -84,7 +81,7 @@ exports.io.on('connection', (socket) => {
         const key = exports.players[socket.id].key;
         const roomSize = exports.rooms[key].players.length;
         const game = exports.rooms[key].name;
-        if (roomSize >= playerCounts[game].min) {
+        if (roomSize >= PLAYER_COUNTS[game].min) {
             exports.io.of('/').in(`${key}`).emit('start');
             exports.rooms[key].gameStarted = true;
             startGame(game, key, exports.rooms[key].players);

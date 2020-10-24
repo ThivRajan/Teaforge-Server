@@ -19,10 +19,6 @@
 		],
 		"@typescript-eslint/no-explicit-any": 1,
 		"no-case-declarations": 0,
-		"indent": [
-			"error",
-			"tab"
-		],
 		"linebreak-style": [
 			"error",
 			"unix"

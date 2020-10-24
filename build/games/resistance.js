@@ -88,12 +88,20 @@ class Resistance {
                                 return;
                             mission.result === 'passed' ? resistance += 1 : spies += 1;
                         });
-                        if (resistance === 3) {
-                            index_1.io.of('/').in(`${this.key}`).emit('gameOver', 'resistance');
-                            return;
-                        }
-                        if (spies === 3) {
-                            index_1.io.of('/').in(`${this.key}`).emit('gameOver', 'spies');
+                        let winner;
+                        if (resistance === 3)
+                            winner = 'resistance';
+                        if (spies === 3)
+                            winner = 'spies';
+                        if (winner) {
+                            index_1.io.of('/').in(`${this.key}`).emit('gameOver', winner);
+                            this.sockets.forEach(s => {
+                                this.events.forEach(event => s.removeAllListeners(event));
+                            });
+                            if (index_1.rooms[this.key])
+                                index_1.rooms[this.key].gameStarted = false;
+                            else
+                                throw new Error('Room does not exist');
                             return;
                         }
                         index_1.io.of('/').in(`${this.key}`)
@@ -118,9 +126,8 @@ class Resistance {
         const playerObjects = index_1.io.sockets.adapter.rooms[this.key];
         const playerIds = Object.keys(playerObjects.sockets);
         this.sockets = playerIds.map(id => index_1.io.sockets.connected[id]);
-        //TODO-DONE: change these to accommodate room size
-        this.roles = gameUtils_1.generateRoles(5);
-        gameUtils_1.MISSION_TEAMS[5].forEach((numPlayers, index) => this.missions[index] = { numPlayers, result: '' });
+        this.roles = gameUtils_1.generateRoles(this.players.length);
+        gameUtils_1.MISSION_TEAMS[this.players.length].forEach((numPlayers, index) => this.missions[index] = { numPlayers, result: '' });
         this.votes = { approve: [], reject: [] };
         this.missionResult = { pass: 0, fail: 0 };
         this.missionIdx = 0;

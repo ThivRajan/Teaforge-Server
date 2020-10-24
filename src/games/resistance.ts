@@ -31,9 +31,8 @@ class Resistance {
 		const playerIds = Object.keys(playerObjects.sockets);
 		this.sockets = playerIds.map(id => io.sockets.connected[id]);
 
-		//TODO-DONE: change these to accommodate room size
-		this.roles = generateRoles(5);
-		MISSION_TEAMS[5].forEach((numPlayers, index) =>
+		this.roles = generateRoles(this.players.length);
+		MISSION_TEAMS[this.players.length].forEach((numPlayers: number, index: number) =>
 			this.missions[index] = { numPlayers, result: '' }
 		);
 
@@ -138,13 +137,18 @@ class Resistance {
 						mission.result === 'passed' ? resistance += 1 : spies += 1;
 					});
 
-					if (resistance === 3) {
-						io.of('/').in(`${this.key}`).emit('gameOver', 'resistance');
-						return;
-					}
+					let winner;
+					if (resistance === 3) winner = 'resistance';
+					if (spies === 3) winner = 'spies';
+					if (winner) {
+						io.of('/').in(`${this.key}`).emit('gameOver', winner);
+						this.sockets.forEach(s => {
+							this.events.forEach(event => s.removeAllListeners(event));
+						});
 
-					if (spies === 3) {
-						io.of('/').in(`${this.key}`).emit('gameOver', 'spies');
+						if (rooms[this.key]) rooms[this.key].gameStarted = false;
+						else throw new Error('Room does not exist');
+
 						return;
 					}
 

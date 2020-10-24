@@ -1,4 +1,3 @@
-/* eslint-disable indent */
 import express from 'express';
 import socket from 'socket.io';
 
@@ -23,11 +22,9 @@ const VALID_ACTION = 'valid';
 export const players: Players = {};
 export const rooms: Rooms = {};
 const PLAYER_COUNTS: { [key in Game]: PlayerCount } = {
-	[Game.Resistance]: { min: 2, max: 10 }
+	[Game.Resistance]: { min: 5, max: 10 }
 };
 
-//TODO-DONE: change min to 5
-//TODO-DONE: README.md
 io.on('connection', (socket) => {
 	socket.on('create', (name: string, game: Game) => {
 		if (!name) {
