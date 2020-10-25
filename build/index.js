@@ -64,10 +64,10 @@ exports.io.on('connection', (socket) => {
             socket.emit(exports.INVALID_ACTION, 'Room is full, please join another room');
             return;
         }
-        exports.players[socket.id] = { name, key };
         const playerNames = exports.rooms[key].players;
         name = name.trim();
         if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
+            exports.players[socket.id] = { name, key };
             exports.rooms[key].players = [...playerNames, name];
             socket.emit(VALID_ACTION, name, key, exports.rooms[key]);
             socket.join(`${key}`);

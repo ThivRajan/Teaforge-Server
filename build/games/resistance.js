@@ -4,27 +4,30 @@ const index_1 = require("../index");
 const gameUtils_1 = require("./gameUtils");
 class Resistance {
     constructor(key, players) {
-        this.start = () => {
-            index_1.io.of('/').in(`${this.key}`).emit('missions', this.missions);
-            this.sockets.forEach(socket => {
-                socket.on('disconnect', () => {
-                    index_1.io.of('/').in(`${this.key}`).emit('playerDisconnected');
-                    this.sockets.forEach(s => {
-                        this.events.forEach(event => s.removeAllListeners(event));
-                    });
-                    if (index_1.rooms[this.key])
-                        index_1.rooms[this.key].gameStarted = false;
+        this.disconnect = () => {
+            index_1.io.of('/').in(`${this.key}`).emit('playerDisconnected');
+            this.sockets.forEach(s => {
+                this.events.forEach(event => {
+                    if (event === 'disconnect')
+                        s.removeListener(event, this.disconnect);
                     else
-                        throw new Error('Room does not exist');
+                        s.removeAllListeners(event);
                 });
+            });
+            if (index_1.rooms[this.key])
+                index_1.rooms[this.key].gameStarted = false;
+        };
+        this.start = () => {
+            this.sockets.forEach(socket => {
+                socket.on('disconnect', this.disconnect);
                 socket.on('ready', () => {
-                    /* Ensures number of players <= number of roles generated */
                     if (this.roles.length) {
                         const role = this.roles.pop();
                         if (!role)
                             throw new Error('Missing role');
                         socket.emit('role', role);
                         socket.emit('transition', `Your are a ${role} member`);
+                        socket.emit('missions', this.missions);
                         socket.emit('teamCreation');
                         socket.emit('teamLeader', this.players[this.leaderIdx]);
                     }
@@ -96,7 +99,12 @@ class Resistance {
                         if (winner) {
                             index_1.io.of('/').in(`${this.key}`).emit('gameOver', winner);
                             this.sockets.forEach(s => {
-                                this.events.forEach(event => s.removeAllListeners(event));
+                                this.events.forEach(event => {
+                                    if (event === 'disconnect')
+                                        s.removeListener(event, this.disconnect);
+                                    else
+                                        s.removeAllListeners(event);
+                                });
                             });
                             if (index_1.rooms[this.key])
                                 index_1.rooms[this.key].gameStarted = false;
@@ -109,8 +117,10 @@ class Resistance {
 							be chosen for the next mission. `);
                         index_1.io.of('/').in(`${this.key}`).emit('teamCreation');
                         index_1.io.of('/').in(`${this.key}`).emit('teamUpdate', this.team);
-                        index_1.io.of('/').in(`${this.key}`).emit('teamLeader', this.players[this.leaderIdx]);
-                        index_1.io.of('/').in(`${this.key}`).emit('teamLeader', this.players[this.leaderIdx]);
+                        index_1.io.of('/').in(`${this.key}`)
+                            .emit('teamLeader', this.players[this.leaderIdx]);
+                        index_1.io.of('/').in(`${this.key}`)
+                            .emit('teamLeader', this.players[this.leaderIdx]);
                         index_1.io.of('/').in(`${this.key}`).emit('missions', this.missions);
                     }
                 });
