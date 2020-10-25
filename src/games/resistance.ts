@@ -41,39 +41,42 @@ class Resistance {
 		this.missionIdx = 0;
 	}
 
-	start = (): void => {
-		io.of('/').in(`${this.key}`).emit('missions', this.missions);
-		this.sockets.forEach(socket => {
-
-			socket.on('disconnect', () => {
-				io.of('/').in(`${this.key}`).emit('playerDisconnected');
-				this.sockets.forEach(s => {
-					this.events.forEach(event => s.removeAllListeners(event));
-				});
-				if (rooms[this.key]) rooms[this.key].gameStarted = false;
-				else throw new Error('Room does not exist');
+	disconnect = (): void => {
+		io.of('/').in(`${this.key}`).emit('playerDisconnected');
+		this.sockets.forEach(s => {
+			this.events.forEach(event => {
+				if (event === 'disconnect') s.removeListener(event, this.disconnect);
+				else s.removeAllListeners(event);
 			});
 
-			socket.on('ready', () => {
-				/* Ensures number of players <= number of roles generated */
+		});
+		if (rooms[this.key]) rooms[this.key].gameStarted = false;
+	}
+
+	start = (): void => {
+		this.sockets.forEach(socket => {
+			socket.on('disconnect', this.disconnect);
+
+			socket.on('ready', (): void => {
 				if (this.roles.length) {
 					const role = this.roles.pop();
 					if (!role) throw new Error('Missing role');
 
 					socket.emit('role', role);
 					socket.emit('transition', `Your are a ${role} member`);
+					socket.emit('missions', this.missions)
 					socket.emit('teamCreation');
 					socket.emit('teamLeader', this.players[this.leaderIdx]);
 				}
 			});
 
-			socket.on('teamUpdate', (type, player) => {
+			socket.on('teamUpdate', (type: string, player: string): void => {
 				if (type === 'choose') this.team = this.team.concat(player);
 				else this.team = this.team.filter(p => p !== player);
 				io.of('/').in(`${this.key}`).emit('teamUpdate', this.team);
 			});
 
-			socket.on('teamConfirm', () => {
+			socket.on('teamConfirm', (): void => {
 				const reqTeamSize = this.missions[this.missionIdx].numPlayers;
 				if (this.team.length === reqTeamSize) {
 					io.of('/').in(`${this.key}`).emit('teamConfirm', this.team);
@@ -90,7 +93,7 @@ class Resistance {
 				}
 			});
 
-			socket.on('vote', (vote, name) => {
+			socket.on('vote', (vote: string, name: string): void => {
 				if (vote === 'approve') this.votes.approve.push(name);
 				else this.votes.reject.push(name);
 
@@ -118,7 +121,7 @@ class Resistance {
 				}
 			});
 
-			socket.on('mission', (result) => {
+			socket.on('mission', (result: string): void => {
 				result === 'pass'
 					? this.missionResult.pass += 1
 					: this.missionResult.fail += 1;
@@ -143,7 +146,11 @@ class Resistance {
 					if (winner) {
 						io.of('/').in(`${this.key}`).emit('gameOver', winner);
 						this.sockets.forEach(s => {
-							this.events.forEach(event => s.removeAllListeners(event));
+							this.events.forEach(event => {
+								if (event === 'disconnect') s.removeListener(event, this.disconnect);
+								else s.removeAllListeners(event);
+							});
+
 						});
 
 						if (rooms[this.key]) rooms[this.key].gameStarted = false;
@@ -161,20 +168,15 @@ class Resistance {
 
 					io.of('/').in(`${this.key}`).emit('teamCreation');
 					io.of('/').in(`${this.key}`).emit('teamUpdate', this.team);
-					io.of('/').in(`${this.key}`).emit(
-						'teamLeader',
-						this.players[this.leaderIdx]
-					);
-					io.of('/').in(`${this.key}`).emit(
-						'teamLeader',
-						this.players[this.leaderIdx]
-					);
+					io.of('/').in(`${this.key}`)
+						.emit('teamLeader', this.players[this.leaderIdx]);
+					io.of('/').in(`${this.key}`)
+						.emit('teamLeader', this.players[this.leaderIdx]);
 					io.of('/').in(`${this.key}`).emit('missions', this.missions);
 				}
 			});
 		});
 	}
-
 }
 
 export default Resistance;

@@ -76,10 +76,10 @@ io.on('connection', (socket) => {
 			return;
 		}
 
-		players[socket.id] = { name, key };
 		const playerNames = rooms[key].players;
 		name = name.trim();
 		if (!playerNames.find(n => n.toLowerCase() === name.toLowerCase())) {
+			players[socket.id] = { name, key };
 			rooms[key].players = [...playerNames, name];
 			socket.emit(VALID_ACTION, name, key, rooms[key]);
 			socket.join(`${key}`);
